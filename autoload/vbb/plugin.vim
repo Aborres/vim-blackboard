@@ -78,6 +78,18 @@ endfunc
 func! vbb#plugin#blackboard_delete() abort
 endfunc
 
+func! s:IsQuickFixOpen() abort
+  return getqflist({'winid': 0}).winid != 0
+endfunc
+
+func! s:ToggleQuickFix() abort
+  if empty(filter(getwininfo(), 'v:val.quickfix'))
+      execute 'copen ' .. expand(g:quickfix_size)
+  else
+      cclose
+  endif
+endfunc
+
 func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
 
   if (s:IsBoardLoaded(a:board))
@@ -93,8 +105,21 @@ func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
 
   let l:win = win_getid()
 
+  let l:qf = s:IsQuickFixOpen()
+  if (l:qf)
+    call s:ToggleQuickFix()
+  endif
+
   execute 'vsplit ' . l:board_path
+  if (g:bb_enable_wrap)
+    setlocal wrap
+  endif
+
   call s:MoveBoard(g:bb_board_location)
+
+  if (l:qf)
+    call s:ToggleQuickFix()
+  endif
 
   if (!a:focus)
     call win_gotoid(l:win)

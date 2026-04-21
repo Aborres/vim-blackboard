@@ -3,6 +3,9 @@ let g:bb_default_board = 'default'
 let g:bb_root = fnamemodify(resolve(expand('<sfile>:p')), ':h') . '/..'
 let g:bb_boards_path = g:bb_root . '/boards'
 
+let g:bb_enable_wrap = 1
+
+" Constants
 let g:bb_board_left  = 0
 let g:bb_board_right = 1
 let g:bb_board_up    = 2
