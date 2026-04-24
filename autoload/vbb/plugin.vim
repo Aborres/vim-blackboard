@@ -72,7 +72,7 @@ func! vbb#plugin#blackboard_new(board) abort
   let l:board_path = s:GetBoardPath(l:board_path, a:board)
   call s:CheckCreateFile(l:board_path)
 
-  return l:board_path
+  return simplify(l:board_path)
 endfunc
 
 func! vbb#plugin#blackboard_delete() abort
@@ -89,6 +89,12 @@ func! s:ToggleQuickFix() abort
       cclose
   endif
 endfunc
+
+let s:bb_line = 0
+let s:bb_col  = 0
+
+let s:bb_open = 0
+let s:bb_file = ''
 
 func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
 
@@ -110,9 +116,18 @@ func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
     call s:ToggleQuickFix()
   endif
 
+  " Cache position in case we don't want to focus
+  let l:buff = bufnr('%')
+  let l:line = line('.')
+  let l:col  = col('.')
+
   execute 'vsplit ' . l:board_path
   if (g:bb_enable_wrap)
     setlocal wrap
+    setlocal expandtab
+    setlocal tabstop=2
+    setlocal shiftwidth=2
+    setlocal softtabstop=2
   endif
 
   call s:MoveBoard(g:bb_board_location)
@@ -121,9 +136,19 @@ func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
     call s:ToggleQuickFix()
   endif
 
-  if (!a:focus)
+  if (a:focus)
+    let l:buff = bufnr('%')
+    let l:line = s:bb_line
+    let l:col  = s:bb_col
+  else
     call win_gotoid(l:win)
   endif
+
+  call setpos('.', [l:buff, l:line, l:col, 0])
+
+  let s:bb_open = 1
+  let s:bb_file = l:board_path
+  call s:RegisterEvent()
 
 endfunc
 
@@ -138,6 +163,12 @@ func! vbb#plugin#blackboard_close(board = '') abort
   let l:curwin = win_getid()
   let l:curbuf = winbufnr(l:curwin)
 
+  " Cache position if buff had focus
+  if (bufnr('%') == l:bnr)
+    let s:bb_line = line('.')
+    let s:bb_col  = col('.')
+  endif
+
   if getbufvar(l:bnr, '&modified')
     let l:win = win_findbuf(l:bnr)[0]
     call win_execute(l:win, 'update', 'silent!')
@@ -150,6 +181,10 @@ func! vbb#plugin#blackboard_close(board = '') abort
     call win_gotoid(l:new_win[0])
   endif
 
+  let s:bb_open = 0
+  let s:bb_file = ''
+  call s:RegisterEvent()
+
 endfunc
 
 func! vbb#plugin#blackboard(board = '', focus = 0) abort
@@ -158,4 +193,23 @@ func! vbb#plugin#blackboard(board = '', focus = 0) abort
   else
     call vbb#plugin#blackboard_close(a:board)
   endif
+endfunc
+
+func! s:HandleBufferSwitch() abort
+
+  let l:left = expand('<afile>')
+  if (l:left == s:bb_file)
+    let s:bb_line = line('.')
+    let s:bb_col  = col('.')
+  endif
+
+endfunc
+
+func! s:RegisterEvent() abort
+  augroup BBOnBuffLeave
+    autocmd!
+    if s:bb_open
+      autocmd BufLeave * call s:HandleBufferSwitch() 
+    endif
+  augroup END
 endfunc
