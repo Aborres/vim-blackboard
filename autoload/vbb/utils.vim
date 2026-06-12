@@ -1,3 +1,6 @@
+func! vbb#utils#echo(text) abort
+  echo('vim-bb: ' . a:text)
+endfunc
 
 func! vbb#utils#check_create_directory(path) abort
   if (!isdirectory(a:path))
@@ -8,7 +11,7 @@ endfunc
 func! vbb#utils#check_create_file(path) abort
   if (!filereadable(a:path))
     call writefile([], a:path)
-    echo('Created board: ' . a:path)
+    call vbb#utils#echo('Created board: ' . a:path)
   endif
 endfunc
 

@@ -21,7 +21,7 @@ func! s:CreateDB(path) abort
   let l:out = json_encode(l:db)
   call writefile([l:out], a:path)
 
-  echo("vim-blackboard: DB Created")
+  call vbb#utils#echo("vim-blackboard: DB Created")
 
 endfunc
 

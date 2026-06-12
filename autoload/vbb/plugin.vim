@@ -114,7 +114,7 @@ endfunc
 func! vbb#plugin#open_file(board, focus) abort
 
   if (!filereadable(a:board))
-    echo "Couldn't find file: " . a:board
+    call vbb#utils#echo("Couldn't find file: " . a:board)
     return 0
   endif
 
@@ -163,7 +163,7 @@ func! vbb#plugin#close_file(board) abort
 
   let l:bnr  = vbb#utils#find_file_buffer(a:board)
   if (l:bnr <= 0)
-    echo('Failed to find buffer for board: ' . a:board)
+    call vbb#utils#echo('Failed to find buffer for board: ' . a:board)
     return 0
   endif
 
