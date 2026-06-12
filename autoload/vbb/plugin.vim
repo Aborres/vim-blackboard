@@ -1,55 +1,74 @@
 
 let s:bb_initialized = 0
+let s:bb_open = 0
+let s:bb_file = ''
 
-func! s:CheckCreateDirectory(path) abort
-  if (!isdirectory(a:path))
-    call mkdir(a:path)
-  endif
-endfunc
+func! vbb#plugin#is_file_open(board) abort
 
-func! s:CheckCreateFile(path) abort
-  if (!filereadable(a:path))
-    call writefile([], a:path)
-    echo('Created board: ' . a:path)
-  endif
-endfunc
-
-func s:NormalizePath(path) abort
-  return fnameescape(expand(a:path))
-endfunc
-
-func! s:GetBoardPath(path, board) abort
-
-  let l:board_name = a:board
-  if (l:board_name == '')
-    let l:board_name = fnamemodify(v:this_session . '.vim_board', ':t')
-  endif
-
-  if (l:board_name == '')
-    let l:board_name = g:bb_default_board
-  endif
-
-  let l:board_name = expand(l:board_name)
-  return s:NormalizePath(a:path . '/' . l:board_name)
-
-endfunc
-
-func! s:FindBoard(board) abort
-
-  let l:board_path = s:NormalizePath(g:bb_boards_path)
-  let l:board_path = s:GetBoardPath(l:board_path, a:board)
-
-  let l:full = fnamemodify(l:board_path, ':p')
-  return bufnr(l:full)
-endfunc
-
-func! s:IsBoardLoaded(board) abort
-  let l:bnr = s:FindBoard(a:board)
+  let l:bnr = vbb#utils#find_file_buffer(a:board)
   if (l:bnr > 0)
     return !empty(win_findbuf(l:bnr))
   endif
 
   return 0
+endfunc
+
+func! s:FindBoardBuffer(board) abort
+  let l:board_path = vbb#utils#normalize_path(g:bb_boards_path)
+  let l:board_path = vbb#utils#get_board_path(l:board_path, a:board)
+  return vbb#utils#find_file_buffer(l:board_path)
+endfunc
+
+func! vbb#plugin#is_blackboard_open(board) abort
+
+  let l:bnr = s:FindBoardBuffer(a:board)
+  if (l:bnr > 0)
+    return !empty(win_findbuf(l:bnr))
+  endif
+
+  return 0
+endfunc
+
+func! vbb#plugin#blackboard_get(board) abort
+
+  let l:board_path = vbb#utils#normalize_path(g:bb_boards_path)
+  call vbb#utils#check_create_directory(l:board_path)
+
+  let l:board_path = vbb#utils#get_board_path(l:board_path, a:board)
+  call vbb#utils#check_create_file(l:board_path)
+
+  return simplify(l:board_path)
+endfunc
+
+func! vbb#plugin#blackboard_delete() abort
+endfunc
+
+func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
+
+  if (vbb#plugin#is_blackboard_open(a:board))
+    return 0
+  endif
+  
+  let l:board_path = vbb#plugin#blackboard_get(a:board)
+  return vbb#plugin#open_file(l:board_path, a:focus)
+endfunc
+
+func! vbb#plugin#blackboard_close(board = '') abort
+
+  if (!vbb#plugin#is_blackboard_open(a:board))
+    return 0
+  endif
+
+  let l:board_path = vbb#plugin#blackboard_get(a:board)
+  return vbb#plugin#close_file(l:board_path)
+endfunc
+
+func! vbb#plugin#blackboard(board = '', focus = 0) abort
+  if (!vbb#plugin#is_blackboard_open(a:board))
+    return vbb#plugin#blackboard_open(a:board, a:focus)
+  else
+    return vbb#plugin#blackboard_close(a:board)
+  endif
 endfunc
 
 func! s:MoveBoard(dir) abort
@@ -64,56 +83,46 @@ func! s:MoveBoard(dir) abort
   endif
 endfunc
 
-func! vbb#plugin#blackboard_new(board) abort
+func! s:MoveCursor(line, col) abort
 
-  let l:board_path = s:NormalizePath(g:bb_boards_path)
-  call s:CheckCreateDirectory(l:board_path)
+  let l:buff = bufnr('%')
+  call setpos('.', [l:buff, a:line, a:col, 0])
 
-  let l:board_path = s:GetBoardPath(l:board_path, a:board)
-  call s:CheckCreateFile(l:board_path)
-
-  return simplify(l:board_path)
 endfunc
 
-func! vbb#plugin#blackboard_delete() abort
-endfunc
+func! s:HandleBufferSwitch() abort
 
-func! s:IsQuickFixOpen() abort
-  return getqflist({'winid': 0}).winid != 0
-endfunc
-
-func! s:ToggleQuickFix() abort
-  if empty(filter(getwininfo(), 'v:val.quickfix'))
-      execute 'copen ' .. expand(g:quickfix_size)
-  else
-      cclose
+  let l:left = expand('<afile>')
+  if (l:left == s:bb_file)
+    let l:line = line('.')
+    let l:col  = col('.')
+    let l:board = vbb#plugin#blackboard_get('')
+    call vbb#db#write_board(l:board, l:line, l:col)
   endif
+
 endfunc
 
-let s:bb_line = 0
-let s:bb_col  = 0
+func! s:RegisterEvent() abort
+  augroup BBOnBuffLeave
+    autocmd!
+    if s:bb_open
+      autocmd BufLeave * call s:HandleBufferSwitch() 
+    endif
+  augroup END
+endfunc
 
-let s:bb_open = 0
-let s:bb_file = ''
+func! vbb#plugin#open_file(board, focus) abort
 
-func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
-
-  if (s:IsBoardLoaded(a:board))
-    return
-  endif
-  
-  let l:board_path = vbb#plugin#blackboard_new(a:board)
-  
-  if (!filereadable(l:board_path))
-    echo "Couldn't find board: " . l:board_path
-    return
+  if (!filereadable(a:board))
+    echo "Couldn't find file: " . a:board
+    return 0
   endif
 
   let l:win = win_getid()
 
-  let l:qf = s:IsQuickFixOpen()
+  let l:qf = vbb#utils#is_qflist_open()
   if (l:qf)
-    call s:ToggleQuickFix()
+    call vbb#utils#toggle_qflist()
   endif
 
   " Cache position in case we don't want to focus
@@ -121,7 +130,7 @@ func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
   let l:line = line('.')
   let l:col  = col('.')
 
-  execute 'vsplit ' . l:board_path
+  execute 'vsplit ' . a:board
   if (g:bb_enable_wrap)
     setlocal wrap
     setlocal expandtab
@@ -133,31 +142,29 @@ func! vbb#plugin#blackboard_open(board = '', focus = 0) abort
   call s:MoveBoard(g:bb_board_location)
 
   if (l:qf)
-    call s:ToggleQuickFix()
+    call vbb#utils#toggle_qflist()
   endif
 
   if (a:focus)
-    let l:buff = bufnr('%')
-    let l:line = s:bb_line
-    let l:col  = s:bb_col
+    let l:board_config = vbb#db#read_board(a:board)
+    call s:MoveCursor(l:board_config.line, l:board_config.col)
   else
     call win_gotoid(l:win)
   endif
 
-  call setpos('.', [l:buff, l:line, l:col, 0])
-
   let s:bb_open = 1
-  let s:bb_file = l:board_path
+  let s:bb_file = a:board
   call s:RegisterEvent()
 
+  return 1
 endfunc
 
-func! vbb#plugin#blackboard_close(board = '') abort
+func! vbb#plugin#close_file(board) abort
 
-  let l:bnr  = s:FindBoard(a:board)
+  let l:bnr  = vbb#utils#find_file_buffer(a:board)
   if (l:bnr <= 0)
     echo('Failed to find buffer for board: ' . a:board)
-    return
+    return 0
   endif
 
   let l:curwin = win_getid()
@@ -165,8 +172,9 @@ func! vbb#plugin#blackboard_close(board = '') abort
 
   " Cache position if buff had focus
   if (bufnr('%') == l:bnr)
-    let s:bb_line = line('.')
-    let s:bb_col  = col('.')
+    let l:line = line('.')
+    let l:col  = col('.')
+    call vbb#db#write_board(a:board, l:line, l:col)
   endif
 
   if getbufvar(l:bnr, '&modified')
@@ -185,31 +193,22 @@ func! vbb#plugin#blackboard_close(board = '') abort
   let s:bb_file = ''
   call s:RegisterEvent()
 
+  return 1
+
 endfunc
 
-func! vbb#plugin#blackboard(board = '', focus = 0) abort
-  if (!s:IsBoardLoaded(a:board))
-    call vbb#plugin#blackboard_open(a:board, a:focus)
+func! vbb#plugin#file(file, focus) abort
+  if (!vbb#plugin#is_file_open(a:file))
+    return vbb#plugin#open_file(a:file, a:focus)
   else
-    call vbb#plugin#blackboard_close(a:board)
+    return vbb#plugin#close_file(a:file)
   endif
 endfunc
 
-func! s:HandleBufferSwitch() abort
-
-  let l:left = expand('<afile>')
-  if (l:left == s:bb_file)
-    let s:bb_line = line('.')
-    let s:bb_col  = col('.')
-  endif
-
+func! vbb#plugin#start() abort
+  call vbb#db#read()
 endfunc
 
-func! s:RegisterEvent() abort
-  augroup BBOnBuffLeave
-    autocmd!
-    if s:bb_open
-      autocmd BufLeave * call s:HandleBufferSwitch() 
-    endif
-  augroup END
+func! vbb#plugin#end() abort
+  call vbb#db#write()
 endfunc
