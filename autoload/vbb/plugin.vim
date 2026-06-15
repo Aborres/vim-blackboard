@@ -83,10 +83,13 @@ func! s:MoveBoard(dir) abort
   endif
 endfunc
 
-func! s:MoveCursor(line, col) abort
+func! s:MoveCursor(buff, line, col) abort
 
-  let l:buff = bufnr('%')
-  call setpos('.', [l:buff, a:line, a:col, 0])
+  let l:winid = bufwinid(a:buff)
+  if l:winid != -1
+    call win_gotoid(l:winid)
+    call cursor(a:line, a:col)
+  endif
 
 endfunc
 
@@ -147,7 +150,8 @@ func! vbb#plugin#open_file(board, focus) abort
 
   if (a:focus)
     let l:board_config = vbb#db#read_board(a:board)
-    call s:MoveCursor(l:board_config.line, l:board_config.col)
+    let l:new_buff = bufnr(a:board)
+    call s:MoveCursor(l:new_buff, l:board_config.line, l:board_config.col)
   else
     call win_gotoid(l:win)
   endif
