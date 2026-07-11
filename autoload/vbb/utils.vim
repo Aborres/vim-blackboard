@@ -8,8 +8,12 @@ func! vbb#utils#check_create_directory(path) abort
   endif
 endfunc
 
-func! vbb#utils#create_file(contents, path) abort
-  let l:path = fnamemodify(a:path, ':p')
+func! vbb#utils#create_file(contents, path) abort"
+
+  let l:path = fnamemodify(simplify(expand(a:path)), ':p')
+  let l:folder = fnamemodify(l:path, ':h')
+
+  call vbb#utils#check_create_directory(l:folder)
   call writefile(a:contents, l:path)
 endfunc
 
