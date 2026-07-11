@@ -19,7 +19,7 @@ func! s:CreateDB(path) abort
         \ }
 
   let l:out = json_encode(l:db)
-  call writefile([l:out], a:path)
+  call vbb#utils#create_file([l:out], a:path)
 
   call vbb#utils#echo("vim-blackboard: DB Created")
 
@@ -71,7 +71,7 @@ func! vbb#db#write() abort
   let s:db['last_update'] = string(l:date)
 
   let l:out = json_encode(s:db)
-  call writefile([l:out], s:db_path)
+  call vbb#utils#create_file([l:out], s:db_path)
 
 endfunc
 

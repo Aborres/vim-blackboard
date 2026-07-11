@@ -8,9 +8,14 @@ func! vbb#utils#check_create_directory(path) abort
   endif
 endfunc
 
+func! vbb#utils#create_file(contents, path) abort
+  let l:path = fnamemodify(a:path, ':p')
+  call writefile(a:contents, l:path)
+endfunc
+
 func! vbb#utils#check_create_file(path) abort
   if (!filereadable(a:path))
-    call writefile([], a:path)
+    call vbb#utils#create_file([], a:path)
     call vbb#utils#echo('Created board: ' . a:path)
   endif
 endfunc
