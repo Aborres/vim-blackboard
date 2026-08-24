@@ -13,9 +13,14 @@ func! vbb#plugin#is_file_open(board) abort
   return 0
 endfunc
 
-func! s:FindBoardBuffer(board) abort
+func! s:FindBoardPath(board) abort
   let l:board_path = vbb#utils#normalize_path(g:bb_boards_path)
   let l:board_path = vbb#utils#get_board_path(l:board_path, a:board)
+  return l:board_path
+endfunc
+
+func! s:FindBoardBuffer(board) abort
+  let l:board_path = s:FindBoardPath(a:board)
   return vbb#utils#find_file_buffer(l:board_path)
 endfunc
 
@@ -215,4 +220,56 @@ endfunc
 
 func! vbb#plugin#end() abort
   call vbb#db#write()
+endfunc
+
+let s:md_buff = -1
+
+func! s:MDCleanUp() abort
+
+  if (s:md_buff > -1)
+    if (bufexists(s:md_buff) && (index(term_list(), s:md_buff) >= 0))
+      let l:job = term_getjob(s:md_buff)
+      call job_stop(l:job, 'kill')
+      silent! execute 'bwipeout! ' . s:md_buff
+    endif
+
+    let s:md_buff = -1
+  endif
+
+endfunc
+
+func! vbb#plugin#render_md(file = '') abort
+
+  if !executable('glow')
+    call vbb#utils#echo("Can't render md file, glow is not installed, check https://github.com/charmbracelet/glow")
+    return 0
+  endif
+
+  if (s:md_buff != -1)
+    call s:MDCleanUp()
+  endif
+
+  let l:file = a:file
+  if (l:file == '')
+    let l:file = s:FindBoardPath('')
+  endif
+
+  if (!filereadable(l:file))
+    call vbb#utils#echo("Failed to find file: " . l:file)
+    return 0
+  endif
+
+  let s:md_buff = term_start(['glow', '-w', '0', '-l', '-n', l:file], #{
+        \ term_name: 'vbb#md#render', 
+        \ curwin: 1, 
+        \ })
+  if (s:md_buff == 0)
+    let s:md_buff = -1
+    call vbb#utils#echo("Failed to Create Process")
+    return 0
+  endif
+
+  execute 'autocmd BufWipeout <buffer=' . s:md_buff . '> call timer_start(0, {t -> s:MDCleanUp()})'
+  return 1
+
 endfunc

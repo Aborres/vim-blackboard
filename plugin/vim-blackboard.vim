@@ -5,11 +5,10 @@ let g:bb_boards_path = g:bb_root . '/boards'
 
 let g:bb_enable_wrap = 1
 
-" Constants
-let g:bb_board_left  = 0
-let g:bb_board_right = 1
-let g:bb_board_up    = 2
-let g:bb_board_down  = 3
+const g:bb_board_left  = 0
+const g:bb_board_right = 1
+const g:bb_board_up    = 2
+const g:bb_board_down  = 3
 
 let g:bb_board_location = g:bb_board_left
 
@@ -56,6 +55,11 @@ endfunc
 
 func! BB_IsFileOpen(file) abort
   return vbb#plugin#is_file_open(a:file)
+endfunc
+
+" Requires glow to render
+func! BB_RenderMD(file = '') abort
+  return vbb#plugin#render_md(a:file)
 endfunc
 
 augroup VimBBEvents

@@ -1,6 +1,14 @@
 
+func! s:ResetDB() abort
+  return  #{
+          \ name: 'BlackBoardDB',
+          \ last_update: 'never',
+          \ boards: {}
+        \ }
+endfunc
+
 let s:db_path = g:bb_boards_path . '/bb_db.json'
-let s:db = {}
+let s:db = s:ResetDB()
 
 func! s:HasDB() abort
   return filereadable(s:db_path)
@@ -12,11 +20,7 @@ endfunc
 
 func! s:CreateDB(path) abort
 
-  let l:db = {
-          \ 'name': 'BlackBoardDB',
-          \ 'last_update': 'never',
-          \ 'boards': {}
-        \ }
+  let s:db = s:ResetDB()
 
   let l:out = json_encode(l:db)
   call vbb#utils#create_file([l:out], a:path)
@@ -34,7 +38,11 @@ func! s:FindBoard(board) abort
   endif
 
   if (!has_key(l:boards, a:board))
-    let l:boards[a:board] = {'line': 0, 'col': 0, 'last_updated': 'never'}
+    let l:boards[a:board] = #{ 
+          \ line: 0,
+          \ col: 0,
+          \ last_updated: 'never'
+        \ }
   endif
 
   let s:db.boards = l:boards
@@ -68,7 +76,7 @@ endfunc
 func! vbb#db#write() abort
 
   let l:date = s:GetDate()
-  let s:db['last_update'] = string(l:date)
+  let s:db.last_update = l:date
 
   let l:out = json_encode(s:db)
   call vbb#utils#create_file([l:out], s:db_path)
