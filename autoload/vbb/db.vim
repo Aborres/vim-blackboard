@@ -22,7 +22,7 @@ func! s:CreateDB(path) abort
 
   let s:db = s:ResetDB()
 
-  let l:out = json_encode(l:db)
+  let l:out = json_encode(s:db)
   call vbb#utils#create_file([l:out], a:path)
 
   call vbb#utils#echo("vim-blackboard: DB Created")
