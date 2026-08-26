@@ -8,13 +8,20 @@ func! vbb#utils#check_create_directory(path) abort
   endif
 endfunc
 
-func! vbb#utils#create_file(contents, path) abort"
+func! vbb#utils#create_file(contents, path) abort
 
   let l:path = fnamemodify(simplify(expand(a:path)), ':p')
   let l:folder = fnamemodify(l:path, ':h')
 
   call vbb#utils#check_create_directory(l:folder)
   call writefile(a:contents, l:path)
+endfunc
+
+func! vbb#utils#create_json(contents, path) abort
+  call vbb#utils#create_file(a:contents, a:path)
+  if (has('python') || has('python3'))
+    call system(printf("python -m json.tool %s %s", a:path, a:path))
+  endif
 endfunc
 
 func! vbb#utils#check_create_file(path) abort

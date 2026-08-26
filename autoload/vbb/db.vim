@@ -7,6 +7,19 @@ func! s:ResetDB() abort
         \ }
 endfunc
 
+func! s:DBIllFormed() abort
+
+  let l:vanilla = s:ResetDB()
+
+  for l:key in keys(l:vanilla)
+    if (!has_key(s:db, l:key))
+      return 1
+    endif
+  endfor
+
+  return 0
+endfunc
+
 let s:db_path = g:bb_boards_path . '/bb_db.json'
 let s:db = s:ResetDB()
 
@@ -23,7 +36,7 @@ func! s:CreateDB(path) abort
   let s:db = s:ResetDB()
 
   let l:out = json_encode(s:db)
-  call vbb#utils#create_file([l:out], a:path)
+  call vbb#utils#create_json([l:out], a:path)
 
   call vbb#utils#echo("vim-blackboard: DB Created")
 
@@ -32,10 +45,6 @@ endfunc
 func! s:FindBoard(board) abort
 
   let l:boards = s:db.boards
-
-  if (!len(l:boards))
-    let l:boards = {}
-  endif
 
   if (!has_key(l:boards, a:board))
     let l:boards[a:board] = #{ 
@@ -79,7 +88,7 @@ func! vbb#db#write() abort
   let s:db.last_update = l:date
 
   let l:out = json_encode(s:db)
-  call vbb#utils#create_file([l:out], s:db_path)
+  call vbb#utils#create_json([l:out], s:db_path)
 
 endfunc
 
@@ -90,6 +99,10 @@ func! vbb#db#read() abort
   endif
 
   let s:file = join(readfile(s:db_path), '')
+  if (s:DBIllFormed())
+    call s:CreateDB(s:db_path)
+  endif
+
   let s:db = json_decode(s:file)
 
 endfunc

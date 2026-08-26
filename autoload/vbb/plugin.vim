@@ -215,11 +215,15 @@ func! vbb#plugin#file(file, focus) abort
 endfunc
 
 func! vbb#plugin#start() abort
-  call vbb#db#read()
+  if (g:bb_use_db)
+    call vbb#db#read()
+  endif
 endfunc
 
 func! vbb#plugin#end() abort
-  call vbb#db#write()
+  if (g:bb_use_db)
+    call vbb#db#write()
+  endif
 endfunc
 
 let s:md_buff = -1
