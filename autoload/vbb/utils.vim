@@ -18,7 +18,8 @@ func! vbb#utils#create_file(contents, path) abort
 endfunc
 
 func! vbb#utils#create_json(contents, path) abort
-  call vbb#utils#create_file(a:contents, a:path)
+  let l:json = [json_encode(a:contents)]
+  call vbb#utils#create_file(l:json, a:path)
   if (has('python') || has('python3'))
     call system(printf("python -m json.tool %s %s", a:path, a:path))
   endif
