@@ -75,6 +75,10 @@ endfunc
 
 func! s:DBIllFormed() abort
 
+  if (type(s:db) != type({}))
+    return 1
+  endif
+
   let l:vanilla = s:ResetDB()
 
   for l:key in keys(l:vanilla)
